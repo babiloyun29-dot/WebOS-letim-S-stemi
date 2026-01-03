@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebOS Pro - Fullscreen Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000;
+            user-select: none;
+            transition: background 0.5s ease;
+        }
+
+        #wallpaper {
+            position: fixed;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            z-index: -1;
+            transition: background-image 0.5s ease;
+        }
+
+        /* Lock Screen */
+        #lock-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(30px);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: opacity 0.5s ease;
+        }
+
+        #shutdown-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 100000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .desktop {
+            width: 100vw;
+            height: calc(100vh - 55px);
+            position: relative;
+            padding: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 100px);
+            grid-template-rows: repeat(auto-fill, 110px);
+            grid-auto-flow: column;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .icon {
+            width: 90px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        .icon:hover { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); }
+
+        .taskbar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 55px;
+            background: rgba(15, 15, 15, 0.75);
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 10000;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Fullscreen Window Style */
+        .window {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+            /* Mod: Tam Ekran */
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: calc(100vh - 55px) !important;
+            border-radius: 0; 
+            box-shadow: none;
+        }
+
+        .window-header {
+            height: 42px;
+            background: rgba(240, 240, 240, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            flex-shrink: 0;
+        }
+
+        .control-btn { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; }
+        .close-btn { background: #ff5f56; border: 1px solid #e0443e; }
+
+        .start-menu {
+            position: absolute;
+            bottom: 65px;
+            left: 15px;
+            width: 400px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(40px);
+            color: white;
+            border-radius: 20px;
+            display: none;
+            padding: 25px;
+            z-index: 10001;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .taskbar-icon {
+            width: 42px;
+            height: 42px;
+            padding: 7px;
+            margin: 0 3px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .taskbar-icon:hover { background: rgba(255,255,255,0.15); transform: translateY(-4px); }
+        .taskbar-icon.active { border-bottom: 3px solid #3b82f6; background: rgba(255,255,255,0.1); }
+        
+        iframe { width: 100%; height: 100%; border: none; background: white; }
+        
+        .calc-btn { background: #f1f1f1; border: 1px solid #ddd; border-radius: 8px; font-weight: bold; transition: background 0.2s; }
+        .calc-btn:hover { background: #e2e2e2; }
+        .calc-btn.op { background: #3b82f6; color: white; border-color: #2563eb; }
+
+        .ttt-cell { width: 80px; height: 80px; background: #fff; border: 2px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; cursor: pointer; border-radius: 12px; }
+        .ttt-cell:hover { background: #f9f9f9; }
+
+        .wallpaper-option { width: 100%; height: 60px; border-radius: 8px; background-size: cover; background-position: center; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .wallpaper-option:hover { border-color: #3b82f6; transform: scale(1.02); }
+
+        #snake-canvas { 
+            background: #1a1a1a; 
+            display: block; 
+            margin: 0 auto; 
+            border-radius: 8px; 
+            border: 4px solid #333;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        /* Status Bar Icons */
+        .status-icons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-right: 15px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="wallpaper"></div>
+
+    <!-- Kapatma Ekranı -->
+    <div id="shutdown-screen">
+        <div class="text-7xl mb-6">🌑</div>
+        <h2 class="text-3xl font-light mb-10 tracking-tight text-white">Oturum Kapatıldı</h2>
+        <button onclick="bootSystem()" class="px-10 py-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl transition-all active:scale-95 text-sm font-bold tracking-widest text-white">SİSTEMİ BAŞLAT</button>
+    </div>
+
+    <!-- Kilit Ekranı -->
+    <div id="lock-screen">
+        <div class="mb-14 text-center">
+            <h1 id="lock-clock" class="text-9xl font-thin mb-2 tracking-tighter text-white">--:--</h1>
+            <p id="lock-date" class="text-2xl opacity-60 font-light text-white">-- ----- ---</p>
+        </div>
+        <div class="flex flex-col items-center gap-8 w-72">
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-full flex items-center justify-center text-4xl font-bold shadow-2xl border-4 border-white/10 text-white">U</div>
+            <div class="w-full space-y-4">
+                <input type="password" id="pin-input" placeholder="Parola (1234)" 
+                       class="w-full bg-white/10 border border-white/10 rounded-2xl px-5 py-4 text-center outline-none focus:bg-white/20 focus:border-blue-500 transition-all text-white placeholder:text-white/20">
+                <button onclick="checkPin()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl text-sm font-bold shadow-xl transition-all active:scale-95 text-white uppercase tracking-widest">Giriş</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Masaüstü -->
+    <div class="desktop" id="desktop"></div>
+
+    <!-- Görev Çubuğu -->
+    <div class="taskbar">
+        <div onclick="toggleStartMenu(event)" class="w-10 h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-500 rounded-xl cursor-pointer transition mr-4 shadow-lg">
+            <img src="https://cdn-icons-png.flaticon.com/512/732/732221.png" class="w-6 h-6 invert" alt="Start">
+        </div>
+        
+        <div class="flex items-center gap-1" id="taskbar-apps"></div>
+
+        <div class="ml-auto flex items-center">
+            <!-- Durum Simgeleri (WiFi & Pil) -->
+            <div class="status-icons">
+                <div id="wifi-status" title="İnternet Durumu">🌐</div>
+                <div id="battery-status" class="flex items-center gap-1">
+                    <span id="battery-level">--%</span>
+                    <span id="battery-icon">🔋</span>
+                </div>
+            </div>
+
+            <!-- Saat ve Tarih -->
+            <div class="text-white text-right px-4 cursor-default border-l border-white/10 flex flex-col justify-center">
+                <div id="taskbar-clock" class="text-sm font-bold leading-none mb-1">--:--</div>
+                <div id="taskbar-date" class="text-[9px] opacity-50 font-bold leading-none uppercase">--.--.----</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Başlat Menüsü -->
+    <div class="start-menu" id="startMenu">
+        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-white/10">
+            <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center font-bold text-white">U</div>
+            <div class="text-sm font-bold text-white">WebOS Kullanıcısı</div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-8" id="start-menu-grid"></div>
+        <div class="flex gap-3">
+            <button onclick="openWindow('ayarlar')" class="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold transition text-white">⚙️ Ayarlar</button>
+            <button onclick="systemAction('restart')" class="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold transition text-white">🔁 Yeniden Başlat</button>
+            <button onclick="systemAction('shutdown')" class="p-3 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-xl text-[10px] font-bold transition">🔒 Kapat</button>
+        </div>
+    </div>
+
+    <script>
+        const CORRECT_PIN = "1234";
+        let zIndex = 100;
+
+        const WALLPAPERS = [
+            'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1920',
+            'https://images.unsplash.com/photo-1477346611705-65d1883cee1e?w=1920',
+            'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1920',
+            'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920'
+        ];
+
+        const ALL_APPS = {
+            bilgisayarim: { id: 'bilgisayarim', name: 'Bilgisayarım', icon: 'https://cdn-icons-png.flaticon.com/512/684/684831.png', system: true },
+            magaza: { id: 'magaza', name: 'Mağaza', icon: 'https://cdn-icons-png.flaticon.com/512/888/888857.png', system: true },
+            tarayici: { id: 'tarayici', name: 'İnternet', icon: 'https://cdn-icons-png.flaticon.com/512/888/888846.png', system: true },
+            copkutusu: { id: 'copkutusu', name: 'Geri Dönüşüm', icon: 'https://cdn-icons-png.flaticon.com/512/1214/1214428.png', system: true },
+            ayarlar: { id: 'ayarlar', name: 'Ayarlar', icon: 'https://cdn-icons-png.flaticon.com/512/2040/2040504.png', system: true },
+            snake: { id: 'snake', name: 'Yılan Oyunu', icon: 'https://cdn-icons-png.flaticon.com/512/528/528076.png', system: false },
+            hesap: { id: 'hesap', name: 'Hesap Makinesi', icon: 'https://cdn-icons-png.flaticon.com/512/2344/2344132.png', system: false },
+            tictactoe: { id: 'tictactoe', name: 'Tic Tac Toe', icon: 'https://cdn-icons-png.flaticon.com/512/1021/1021264.png', system: false },
+            hava: { id: 'hava', name: 'Hava Durumu', icon: 'https://cdn-icons-png.flaticon.com/512/1163/1163624.png', system: false }
+        };
+
+        let state = {
+            installedAppIds: ['bilgisayarim', 'magaza', 'tarayici', 'copkutusu', 'ayarlar', 'hesap', 'tictactoe', 'hava', 'snake'],
+            openWindows: [],
+            wallpaper: WALLPAPERS[0],
+            trash: [],
+            files: [
+                { name: "Önemli.txt", content: "Sistemi güncel tutun.", size: "1 KB" },
+                { name: "Sistem Log.txt", content: "Uygulama yönetimi aktif edildi.", size: "2 KB" }
+            ]
+        };
+
+        function saveState() {
+            localStorage.setItem('webos_v9_data', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('webos_v9_data');
+            if (saved) state = JSON.parse(saved);
+            document.getElementById('wallpaper').style.backgroundImage = `url('${state.wallpaper}')`;
+            renderDesktop();
+            renderStartMenu();
+        }
+
+        // --- Sistem Bilgisi Güncelleme ---
+        function updateSystemStatus() {
+            // Zaman
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            document.getElementById('taskbar-clock').innerText = timeStr;
+            if (document.getElementById('lock-clock')) document.getElementById('lock-clock').innerText = timeStr;
+
+            const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+            const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+            const simpleDateStr = `${now.getDate().toString().padStart(2,'0')}.${(now.getMonth()+1).toString().padStart(2,'0')}.${now.getFullYear()}`;
+            document.getElementById('taskbar-date').innerText = simpleDateStr;
+            if (document.getElementById('lock-date')) document.getElementById('lock-date').innerText = `${now.getDate()} ${months[now.getMonth()]} ${days[now.getDay()]}`;
+
+            // WiFi Durumu
+            const wifi = document.getElementById('wifi-status');
+            if (navigator.onLine) {
+                wifi.innerText = '🌐';
+                wifi.title = 'İnternete Bağlı';
+                wifi.style.opacity = '1';
+            } else {
+                wifi.innerText = '🌐';
+                wifi.title = 'Bağlantı Yok';
+                wifi.style.opacity = '0.3';
+            }
+
+            // Pil Durumu
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(battery => {
+                    const level = Math.round(battery.level * 100);
+                    document.getElementById('battery-level').innerText = level + '%';
+                    const icon = document.getElementById('battery-icon');
+                    if (battery.charging) icon.innerText = '⚡';
+                    else if (level > 80) icon.innerText = '🔋';
+                    else if (level > 20) icon.innerText = '🪫';
+                    else icon.innerText = '❗';
+                });
+            }
+        }
+
+        function renderDesktop() {
+            const d = document.getElementById('desktop');
+            d.innerHTML = '';
+            state.installedAppIds.forEach(id => {
+                const app = ALL_APPS[id];
+                if (!app) return;
+                const div = document.createElement('div');
+                div.className = 'icon';
+                div.onclick = () => openWindow(id);
+                div.innerHTML = `<img src="${app.icon}" class="w-14 h-14 mb-2"><span class="text-[11px] font-bold text-center text-white">${app.name}</span>`;
+                d.appendChild(div);
+            });
+            renderTaskbar();
+        }
+
+        function renderStartMenu() {
+            const g = document.getElementById('start-menu-grid');
+            if(!g) return;
+            g.innerHTML = '';
+            state.installedAppIds.forEach(id => {
+                const app = ALL_APPS[id];
+                if(!app || app.id === 'ayarlar') return;
+                g.innerHTML += `<button onclick="openWindow('${id}')" class="p-3 bg-white/5 hover:bg-white/10 rounded-xl flex items-center gap-3 transition text-xs text-white">
+                    <img src="${app.icon}" class="w-5 h-5"> ${app.name}</button>`;
+            });
+        }
+
+        function renderTaskbar() {
+            const t = document.getElementById('taskbar-apps');
+            t.innerHTML = '';
+            state.openWindows.forEach(win => {
+                const app = ALL_APPS[win.type];
+                if (!app) return;
+                const img = document.createElement('img');
+                img.src = app.icon;
+                img.className = 'taskbar-icon active';
+                img.onclick = () => {
+                    const el = document.getElementById('win-' + win.type);
+                    if(el) el.style.zIndex = ++zIndex;
+                };
+                t.appendChild(img);
+            });
+        }
+
+        function openWindow(type) {
+            const id = 'win-' + type;
+            if(document.getElementById(id)) {
+                document.getElementById(id).style.zIndex = ++zIndex;
+                return;
+            }
+            // Tüm pencereler artık tam ekran açılıyor
+            const winData = { type, x: 0, y: 0, w: window.innerWidth, h: window.innerHeight - 55 };
+            
+            state.openWindows.push(winData);
+            const win = document.createElement('div');
+            win.id = id; win.className = 'window';
+            // CSS'de zaten tam ekran kuralları tanımlı ama JS ile de zIndex basıyoruz
+            win.style.zIndex = ++zIndex;
+            
+            win.innerHTML = `
+                <div class="window-header">
+                    <span class="text-[10px] font-black uppercase text-gray-500">${ALL_APPS[type]?.name || 'Pencere'}</span>
+                    <div class="control-btn close-btn" onclick="closeWindow('${type}')"></div>
+                </div>
+                <div class="flex-grow overflow-hidden h-full">${getAppContent(type)}</div>
+            `;
+            document.body.appendChild(win);
+            renderTaskbar();
+
+            if (type === 'tictactoe') initTicTacToe();
+            if (type === 'snake') initSnake();
+        }
+
+        function getAppContent(type) {
+            switch(type) {
+                case 'tarayici':
+                    return `<div class="flex flex-col h-full bg-white">
+                        <div class="p-2 flex gap-2 border-b bg-gray-100">
+                            <input id="url-bar" class="flex-grow px-4 py-1 bg-white border rounded-full text-xs" value="https://www.google.com/search?igu=1">
+                            <button onclick="document.getElementById('browser-frame').src=document.getElementById('url-bar').value" class="bg-blue-600 text-white px-3 rounded-full text-xs">Git</button>
+                        </div>
+                        <iframe id="browser-frame" src="https://www.google.com/search?igu=1"></iframe>
+                    </div>`;
+                case 'ayarlar':
+                    return `<div class="p-8 h-full bg-white text-gray-800 overflow-auto flex flex-col items-center">
+                        <div class="max-w-md w-full">
+                            <h2 class="text-xl font-bold mb-6">Ayarlar</h2>
+                            <label class="text-xs font-bold uppercase opacity-40 mb-3 block">Duvar Kağıdı Seç</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                ${WALLPAPERS.map(wp => `<div class="wallpaper-option" style="background-image: url('${wp}')" onclick="setWallpaper('${wp}')"></div>`).join('')}
+                            </div>
+                            <div class="mt-8 pt-6 border-t">
+                                <p class="text-[10px] font-bold opacity-40">SİSTEM BİLGİSİ</p>
+                                <p class="text-xs mt-1">WebOS Pro v9.5.0 - Fullscreen & Status Update</p>
+                            </div>
+                        </div>
+                    </div>`;
+                case 'bilgisayarim':
+                    return `<div class="p-6 bg-white h-full overflow-auto">
+                        <div class="grid grid-cols-4 md:grid-cols-8 gap-4">
+                            ${state.files.map((f, i) => `
+                                <div class="flex flex-col items-center p-3 hover:bg-blue-50 rounded cursor-pointer group" onclick="alert('${f.name}: ${f.content}')">
+                                    <div class="text-3xl mb-1">📄</div>
+                                    <div class="text-[10px] font-bold text-center text-gray-800">${f.name}</div>
+                                    <button onclick="event.stopPropagation(); deleteFile(${i})" class="hidden group-hover:block text-red-500 text-[8px] font-bold mt-1">SİL</button>
+                                </div>`).join('')}
+                        </div>
+                    </div>`;
+                case 'copkutusu':
+                    return `<div class="p-6 bg-gray-50 h-full flex flex-col items-center justify-center">
+                        ${state.trash.length === 0 ? `<div class="opacity-20 text-xs font-bold uppercase text-gray-800">Çöp kutusu boş</div>` : 
+                        `<div class="w-full text-center"><button onclick="emptyTrash()" class="bg-red-600 text-white px-4 py-2 rounded text-[10px]">ÇÖPÜ BOŞALT</button></div>`}
+                    </div>`;
+                case 'hesap':
+                    return `<div class="p-4 bg-gray-100 h-full flex flex-col items-center justify-center">
+                        <div class="w-80">
+                            <input id="calc-display" readonly class="w-full text-right p-4 text-2xl font-mono bg-white rounded-xl mb-4 text-gray-800 shadow-sm" value="0">
+                            <div class="grid grid-cols-4 gap-2">
+                                ${['7','8','9','/','4','5','6','*','1','2','3','-','C','0','=','+'].map(char => `<button onclick="calcPress('${char}')" class="calc-btn p-5 text-gray-800 text-xl">${char}</button>`).join('')}
+                            </div>
+                        </div>
+                    </div>`;
+                case 'tictactoe':
+                    return `<div class="h-full bg-blue-50 flex flex-col items-center justify-center">
+                        <div id="ttt-status" class="text-xl font-bold mb-6 text-gray-800">SIRA: X</div>
+                        <div class="grid grid-cols-3 gap-3" id="ttt-board"></div>
+                    </div>`;
+                case 'snake':
+                    return `<div class="h-full bg-[#222] flex flex-col items-center justify-center p-4">
+                        <div id="snake-score" class="text-white text-xl font-bold mb-5">Skor: 0</div>
+                        <canvas id="snake-canvas" width="400" height="400"></canvas>
+                        <div class="mt-8 grid grid-cols-3 gap-4">
+                            <div></div>
+                            <button class="bg-white/10 hover:bg-white/20 p-5 rounded-xl text-white transition active:scale-95" onmousedown="snakeDir({keyCode: 38})">↑</button>
+                            <div></div>
+                            <button class="bg-white/10 hover:bg-white/20 p-5 rounded-xl text-white transition active:scale-95" onmousedown="snakeDir({keyCode: 37})">←</button>
+                            <button class="bg-white/10 hover:bg-white/20 p-5 rounded-xl text-white transition active:scale-95" onmousedown="snakeDir({keyCode: 40})">↓</button>
+                            <button class="bg-white/10 hover:bg-white/20 p-5 rounded-xl text-white transition active:scale-95" onmousedown="snakeDir({keyCode: 39})">→</button>
+                        </div>
+                    </div>`;
+                case 'hava':
+                    return `<div class="h-full bg-gradient-to-br from-blue-400 to-blue-600 flex flex-col items-center justify-center text-white">
+                        <h2 class="text-6xl font-black">İstanbul</h2>
+                        <p class="text-9xl mt-12">14°C ⛅</p>
+                        <p class="text-xl mt-4 opacity-70 font-bold uppercase tracking-widest">Parçalı Bulutlu</p>
+                    </div>`;
+                case 'magaza':
+                    return `<div class="p-6 h-full bg-gray-50 overflow-auto">
+                        <h2 class="text-2xl font-bold mb-8 text-center text-gray-800">Uygulama Mağazası</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                            ${Object.values(ALL_APPS).filter(a => !a.system).map(a => `
+                                <div class="bg-white p-6 rounded-2xl border shadow-sm flex flex-col items-center">
+                                    <img src="${a.icon}" class="w-12 h-12 mb-4">
+                                    <div class="text-sm font-bold mb-4 text-gray-800">${a.name}</div>
+                                    ${state.installedAppIds.includes(a.id) ? 
+                                        `<button onclick="uninstallApp('${a.id}')" class="w-full py-2 bg-red-500 text-white text-xs font-bold rounded-lg hover:bg-red-600 transition">SİL</button>` : 
+                                        `<button onclick="installApp('${a.id}')" class="w-full py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition">YÜKLE</button>`}
+                                </div>`).join('')}
+                        </div>
+                    </div>`;
+                default: return `<div class="p-10 text-center opacity-20">Uygulama İçeriği</div>`;
+            }
+        }
+
+        // --- Yılan Oyunu Mantığı ---
+        let snakeLoop;
+        function initSnake() {
+            const canvas = document.getElementById('snake-canvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let snake = [{x: 10, y: 10}];
+            let food = {x: 15, y: 15};
+            let dx = 1, dy = 0;
+            let score = 0;
+            const box = 20; // Tam ekran için biraz büyütüldü
+
+            if(snakeLoop) clearInterval(snakeLoop);
+
+            window.snakeDir = (e) => {
+                if(e.keyCode == 37 && dx == 0) { dx = -1; dy = 0; }
+                else if(e.keyCode == 38 && dy == 0) { dx = 0; dy = -1; }
+                else if(e.keyCode == 39 && dx == 0) { dx = 1; dy = 0; }
+                else if(e.keyCode == 40 && dy == 0) { dx = 0; dy = 1; }
+            };
+
+            snakeLoop = setInterval(() => {
+                const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+                
+                if(head.x < 0 || head.x >= 20 || head.y < 0 || head.y >= 20 || snake.some(s => s.x == head.x && s.y == head.y)) {
+                    clearInterval(snakeLoop);
+                    alert("Oyun Bitti! Skor: " + score);
+                    initSnake();
+                    return;
+                }
+
+                snake.unshift(head);
+
+                if(head.x == food.x && head.y == food.y) {
+                    score++;
+                    const scoreEl = document.getElementById('snake-score');
+                    if(scoreEl) scoreEl.innerText = "Skor: " + score;
+                    food = {x: Math.floor(Math.random()*20), y: Math.floor(Math.random()*20)};
+                } else {
+                    snake.pop();
+                }
+
+                ctx.fillStyle = "#1a1a1a";
+                ctx.fillRect(0,0,400,400);
+                
+                ctx.strokeStyle = "#2a2a2a";
+                ctx.lineWidth = 0.5;
+                for(let i=0; i<400; i+=box) {
+                    ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,400); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(400,i); ctx.stroke();
+                }
+
+                ctx.fillStyle = "#ff4d4d";
+                ctx.shadowBlur = 10; ctx.shadowColor = "red";
+                ctx.fillRect(food.x*box + 2, food.y*box + 2, box-4, box-4);
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = "#4ade80";
+                snake.forEach((s, i) => {
+                    ctx.fillStyle = i === 0 ? "#22c55e" : "#4ade80";
+                    ctx.fillRect(s.x*box + 1, s.y*box + 1, box-2, box-2);
+                });
+            }, 100);
+        }
+
+        // --- Genel Sistem Fonksiyonları ---
+        function setWallpaper(url) {
+            state.wallpaper = url;
+            document.getElementById('wallpaper').style.backgroundImage = `url('${url}')`;
+            saveState();
+        }
+
+        function deleteFile(index) {
+            state.trash.push(state.files.splice(index, 1)[0]);
+            saveState();
+            refreshWindow('bilgisayarim');
+            refreshWindow('copkutusu');
+        }
+
+        function emptyTrash() { state.trash = []; saveState(); refreshWindow('copkutusu'); }
+
+        function refreshWindow(type) {
+            const win = document.getElementById('win-' + type);
+            if(win) win.querySelector('.flex-grow').innerHTML = getAppContent(type);
+        }
+
+        let calcVal = "0";
+        function calcPress(char) {
+            const disp = document.getElementById('calc-display');
+            if (char === 'C') calcVal = "0";
+            else if (char === '=') try { calcVal = eval(calcVal).toString(); } catch { calcVal = "HATA"; }
+            else calcVal = (calcVal === "0" ? "" : calcVal) + char;
+            disp.value = calcVal;
+        }
+
+        let tttBoard = Array(9).fill(null);
+        let tttPlayer = 'X';
+        function initTicTacToe() {
+            const boardEl = document.getElementById('ttt-board');
+            if(!boardEl) return;
+            boardEl.innerHTML = '';
+            tttBoard.fill(null);
+            for(let i=0; i<9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'ttt-cell';
+                cell.onclick = () => {
+                    if(tttBoard[i]) return;
+                    tttBoard[i] = tttPlayer;
+                    cell.innerText = tttPlayer;
+                    cell.style.color = tttPlayer === 'X' ? '#3b82f6' : '#ef4444';
+                    tttPlayer = tttPlayer === 'X' ? 'O' : 'X';
+                    document.getElementById('ttt-status').innerText = "SIRA: " + tttPlayer;
+                };
+                boardEl.appendChild(cell);
+            }
+        }
+
+        function closeWindow(type) {
+            if(type === 'snake' && snakeLoop) clearInterval(snakeLoop);
+            state.openWindows = state.openWindows.filter(w => w.type !== type);
+            const win = document.getElementById('win-' + type);
+            if(win) win.remove();
+            renderTaskbar();
+        }
+
+        function installApp(id) { state.installedAppIds.push(id); saveState(); renderDesktop(); renderStartMenu(); refreshWindow('magaza'); }
+        function uninstallApp(id) { state.installedAppIds = state.installedAppIds.filter(a => a !== id); closeWindow(id); saveState(); renderDesktop(); renderStartMenu(); refreshWindow('magaza'); }
+        function checkPin() { if(document.getElementById('pin-input').value === CORRECT_PIN) document.getElementById('lock-screen').style.display = 'none'; }
+        function bootSystem() { document.getElementById('shutdown-screen').style.display = 'none'; }
+        function systemAction(act) { if(act==='shutdown') document.getElementById('shutdown-screen').style.display='flex'; else location.reload(); }
+        function toggleStartMenu(e) { e.stopPropagation(); const sm = document.getElementById('startMenu'); sm.style.display = sm.style.display === 'block' ? 'none' : 'block'; }
+
+        // Event Listeners
+        setInterval(updateSystemStatus, 1000);
+        updateSystemStatus();
+        loadState();
+        
+        window.onclick = () => { 
+            const sm = document.getElementById('startMenu');
+            if(sm) sm.style.display = 'none'; 
+        };
+        
+        window.onkeydown = (e) => { if(window.snakeDir) window.snakeDir(e); };
+
+        // Ekran boyutu değiştiğinde pencereleri güncelle (Tam ekranı korumak için)
+        window.onresize = () => {
+            state.openWindows.forEach(win => {
+                const el = document.getElementById('win-' + win.type);
+                if(el) {
+                    el.style.width = window.innerWidth + 'px';
+                    el.style.height = (window.innerHeight - 55) + 'px';
+                }
+            });
+        };
+    </script>
+</body>
+</html>
